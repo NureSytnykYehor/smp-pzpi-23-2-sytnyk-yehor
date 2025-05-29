@@ -145,6 +145,28 @@ class DB
     }
 
     /**
+     * Fetches all items in the cart from the database.
+     *
+     * @return array[]
+     * @throws DbException If there's a database error.
+     */
+    public function get_cart(): array
+    {
+        try {
+            $stmt = $this->pdo->query(
+                "SELECT
+                    cart.id, name, price, count, price*count as total_price
+                FROM cart
+                INNER JOIN items ON cart.id = items.id
+                ORDER BY cart.id;"
+            );
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            throw new DbException("Error inserting init data in the items table.\nCaused by: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Add item to the cart
      *
      * @param int $id
@@ -347,6 +369,23 @@ class App
     }
     private function checkout(): void
     {
+        $cart = $this->db->get_cart();
+        if (count($cart) == 0) {
+            echo "КОШИК ПОРОЖНІЙ\n";
+            $this->state = State::Menu;
+            return;
+        } else {
+            echo "У КОШИКУ:\n";
+            array_unshift($cart, ['id' => "№", 'name' => "НАЗВА", 'price' => "ЦІНА", 'count' => "КІЛЬКІСТЬ", 'total_price' => "ВАРТІСТЬ"]);
+            $cart_columns = $this->count_columns($cart);
+            $this->print_lits($cart, $cart_columns);
+        }
+
+        $total_price = array_reduce($cart, function ($carry, $item) {
+            return $carry + (int)$item['total_price'];
+        }, 0);
+        echo "РАЗОМ ДО СПЛАТИ: {$total_price}\n";
+
         $this->state = State::Menu;
     }
     private function settings(): void
