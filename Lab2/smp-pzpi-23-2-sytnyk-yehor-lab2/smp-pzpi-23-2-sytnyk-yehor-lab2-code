@@ -240,7 +240,7 @@ class App
             $this->db = new DB($db_path);
             $this->state = State::Hello;
         } catch (DbException $e) {
-            throw new AppException("Error initializing app.\nCaused by: " . $e);
+            throw new AppException("Error initializing app.\nCaused by: " . $e->getMessage());
         }
     }
 
@@ -394,6 +394,8 @@ class App
             $name = readline("Ваше ім'я: ");
             if ($name !== "" && preg_match("/[a-zA-Z]+/", $name))
                 break;
+            else
+                echo "ПОМИЛКА! Ім'я користувача не може бути порожнім і повинно містити хоча б одну літеру.\n";
         }
 
         while (true) {
