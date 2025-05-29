@@ -2,6 +2,9 @@
 
 <?php
 
+class DbException extends Exception {}
+class AppException extends Exception {}
+
 enum State
 {
     case Hello;
@@ -12,8 +15,30 @@ enum State
     case Exit;
 }
 
+class DB
+{
+    private $pdo;
+
+    /**
+     * Initializes database
+     *
+     * @param string $db_path
+     * @throws DbException If there's a database error.
+     */
+    public function __construct($db_path)
+    {
+        try {
+            $this->pdo = new PDO("sqlite:" . $db_path);
+            $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            throw new DbException("Connection to DB failed.\nCaused by: " . $e->getMessage());
+        }
+    }
+}
+
 class App
 {
+    private $db;
     private $state;
 
     private $menu_ops = <<<'END'
@@ -28,9 +53,18 @@ class App
     ################################
     END;
 
-    public function __construct()
+
+    /**
+     * @param string $db_path
+     */
+    public function __construct($db_path)
     {
-        $this->state = State::Hello;
+        try {
+            $this->db = new DB($db_path);
+            $this->state = State::Hello;
+        } catch (DbException $e) {
+            throw new AppException("Error initializing app.\nCaused by: " . $e);
+        }
     }
 
     public function poll(): void
@@ -103,7 +137,12 @@ class App
     {
         $this->state = State::Menu;
     }
+
+try {
+    $app = new App("db.sqlite");
+} catch (AppException $e) {
+    echo $e;
+    exit(1);
 }
 
-$app = new App();
 $app->poll();
