@@ -1,0 +1,1648 @@
+                    МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+   ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+
+                           Кафедра Програмної інженерії
+
+
+
+
+                                        Звіт
+                              з лабораторної роботи №4
+                    з дисципліни: «Скриптові мови програмування»
+з теми: «Структурування коду, робота з формами, автентифікація та авторизація»
+
+
+
+
+Виконав:                                                              Перевірив:
+ст. гр. ПЗПІ-23-2                                  Старший викладач кафедри ПІ
+Ситник Є. С.                                                       Сокорчук І. П.
+
+
+
+
+                                   Харків – 2025
+                                                                                   2
+4 СТРУКТУРУВАННЯ КОДУ, РОБОТА З ФОРМАМИ, АВТЕНТИФІКАЦІЯ
+                                  ТА АВТОРИЗАЦІЯ
+      4.1 Історія змін
+
+№ Дата                 Версія звіту   Опис змін та виправлень
+1 08.06.2025           0.1            Створено звіт для лабораторної роботи №4
+
+      4.2 Мета роботи
+
+      Метою даної лабораторної роботи є поглиблене вивчення та практичне
+застосування фундаментальних концепцій розробки веб-застосунків. Основні
+завдання включають освоєння технік структурування та масштабування коду,
+розробку та обробку HTML-форм для взаємодії з користувачем, а також створення
+повноцінної системи безпеки, що охоплює процеси автентифікації (підтвердження
+особи) та авторизації (надання прав доступу) на основі сесій.
+
+      4.3 Хід роботи
+      4.3.1 Архітектура застосунку та структурування коду
+
+      Для підвищення якості кодової бази та її підготовки до майбутніх розширень
+було впроваджено модульний підхід, що відповідає принципу DRY (Don’t Repeat
+Yourself).
+
+      4.3.1.1 Шаблонізація:
+
+      Ключовим кроком стала відмова від дублювання коду. Наскрізні елементи
+інтерфейсу — шапка сайту з навігацією та мета-тегами, а також підвал з копірайтами
+та підключенням скриптів — були винесені в окремі файли:
+      –      «header.php»:   Інкапсулює   всю    початкову   HTML-розмітку      («<!
+             DOCTYPE>», «<html>», «<head>»), підключення CSS-стилів та головне
+             навігаційне меню.
+      –      «footer.php»: Містить закриваючі теги, підключення JavaScript-файлів та
+             іншу інформацію, що завершує сторінку.
+                                                                                    3
+     4.3.1.2 Маршрутизація:
+
+     Центральним елементом архітектури став файл «index.php», який виконує
+роль простого «Front Controller». Він першим приймає всі запити. Використовуючи
+GET-параметр «page» з URL (наприклад, «index.php?page=profile»), він динамічно
+визначає, який основний контент потрібно відобразити користувачеві. Для цього
+застосовується конструкція «switch», яка підключає відповідний файл сторінки
+(«login.php», «register.php», «profile.php» тощо) за допомогою «require_once». Такий
+підхід забезпечує чіткий та керований потік обробки запитів і відокремлює логіку
+маршрутизації від логіки конкретних сторінок.
+
+     4.3.2 Реалізація системи автентифікації
+
+     Автентифікація є фундаментом будь-якої системи з обліковими записами. В
+роботі реалізовано повний цикл: від створення акаунту до входу в систему.
+
+     4.3.2.1 Реєстрація нового користувача («register.php»):
+
+     Процес реєстрації складається з кількох етапів. Користувачу пропонується
+HTML-форма з полями для введення імені, адреси електронної пошти та пароля.
+Після відправки форми на сервері відбувається наступне:
+      а)   Валідація даних: Перевіряється, чи всі поля заповнені, та чи має email
+           коректний формат.
+     б)    Хешування пароля: Пароль користувача ніколи не зберігається
+           у відкритому вигляді. Він обробляється криптографічно стійкою
+           односторонньою функцією «password_hash()». Це перетворює пароль на
+           рядок фіксованої довжини (хеш), відновити з якого початковий пароль
+           неможливо.
+      в)   Збереження в БД: Дані нового користувача (ім’я, email та безпечний хеш
+           пароля) записуються в таблицю «users».
+
+     4.3.2.2 Вхід користувача в систему («login.php»):
+
+     Процес входу підтверджує особу користувача.
+      а)   Користувач вводить свої облікові дані (email та пароль) у форму входу.
+                                                                                    4
+     б)    Сервер виконує запит до бази даних для пошуку користувача за вказаним
+           email.
+     в)    Якщо     користувача     знайдено,    система   використовує       функцію
+           «password_verify()». Вона приймає введений пароль та збережений у базі
+           даних хеш і, не розшифровуючи хеш, безпечно визначає, чи збігаються
+           вони.
+      г)   У разі успішної перевірки, система ініціює сесію для користувача,
+           записуючи його унікальний «id» в глобальний масив «$_SESSION». Це
+           є сигналом для всього застосунку, що користувач успішно пройшов
+           автентифікацію.
+
+     4.3.3 Авторизація та керування доступом на основі сесій
+
+     Після успішної автентифікації система повинна надавати користувачеві
+відповідні права доступу — це процес авторизації.
+
+     4.3.3.1 Механізм сесій:
+
+     PHP-сесії дозволяють зберігати інформацію про користувача між різними
+запитами та сторінками. На початку кожного скрипта викликається «session_start()»,
+що відновлює сесію користувача. Зберігання «user_id» у «$_SESSION[’user_id’]»
+дозволяє ідентифікувати користувача під час його навігації по сайту.
+
+     4.3.3.2 Контроль доступу:
+
+      а)   Захист сторінок: Критично важливі сторінки, такі як профіль
+           («profile.php»), містять на початку «охоронну умову». Вона перевіряє
+           наявність «$_SESSION[’user_id’]». Якщо ідентифікатор відсутній,
+           це   означає,   що     користувач    неавторизований,   і   його   негайно
+           перенаправляють на сторінку входу за допомогою «header(’Location:
+           login.php’)». Виклик «exit()» після перенаправлення є обов’язковим для
+           зупинки виконання подальшого коду сторінки.
+     б)    Динамічний інтерфейс: Елементи сайту, зокрема навігаційне меню
+           в «header.php», адаптуються до статусу користувача. За допомогою
+                                                                                  5
+          умовного оператора «if (isset($_SESSION[’user_id’]))» меню показує різні
+          набори посилань: «Профіль» та «Вихід» для авторизованих користувачів,
+          та «Вхід» і «Реєстрація» для гостей.
+     в)   Вихід із системи («logout.php»): Для завершення сеансу користувача
+          скрипт «logout.php» виконує дві дії: «session_unset()» (видаляє всі змінні
+          сесії) та «session_destroy()» (знищує саму сесію на сервері). Після цього
+          користувач перенаправляється на головну сторінку.
+
+     4.3.4 Структура бази даних та клас для роботи з користувачами
+
+     Для зберігання даних про користувачів була спроектована таблиця «users» в
+базі даних SQLite. Логіка взаємодії з цією таблицею інкапсульована у відповідному
+класі «Users» (що наслідує базовий клас «DB»), реалізуючи принцип розділення
+відповідальності.
+
+     4.3.4.1 Таблиця «users»:
+
+      –   «id» (INTEGER PRIMARY KEY): Унікальний числовий ідентифікатор, що
+          автоматично інкрементується.
+      –   «name» (TEXT NOT NULL): Ім’я користувача.
+      –   «email» (TEXT NOT NULL UNIQUE): Адреса електронної пошти.
+          Використовується як логін, а обмеження «UNIQUE» гарантує відсутність
+          дублікатів.
+      –   «password»    (TEXT    NOT     NULL):     Хеш    пароля,    згенерований
+          «password_hash()».
+
+     4.3.4.2 Клас «Users»:
+
+     Цей клас надає зручний інтерфейс для маніпуляції даними користувачів,
+приховуючи складність SQL-запитів. Основні методи:
+      –   «add_user($name, $email, $password_hash)»: Додає нового користувача.
+      –   «get_by_email($email)»: Знаходить користувача за його email.
+      –   «get_by_id($id)»: Отримує дані користувача за його унікальним ID.
+                                                                                  6
+     4.3.5 Заходи безпеки
+
+     Безпека була пріоритетом на всіх етапах розробки:
+      –     Захист від SQL-ін’єкцій: Усі SQL-запити, що включають дані від
+            користувача, виконуються через підготовлені вирази (prepared statements)
+            з використанням PDO. Це надійно розділяє логіку запиту від даних, що
+            унеможливлює маніпуляцію запитом.
+      –     Безпека паролів: Застосування сучасного алгоритму хешування
+            «password_hash()» (який використовує bcrypt) гарантує, що навіть у
+            випадку витоку бази даних зловмисники не зможуть відновити паролі
+            користувачів.
+      –     Захист від XSS (Cross-Site Scripting): Усі дані, що надходять від
+            користувача (наприклад, ім’я) і виводяться на сторінку, обробляються
+            функцією «htmlspecialchars()». Вона перетворює спеціальні HTML-
+            символи (наприклад, «<» та «>») на їх безпечні еквіваленти, запобігаючи
+            виконанню вбудованого в дані шкідливого JavaScript-коду.
+
+     4.4 Висновки
+
+     У ході виконання цієї лабораторної роботи було не просто реалізовано набір
+функцій, а збудовано цілісну та безпечну архітектуру для веб-застосунку, що керує
+доступом користувачів. Я глибоко засвоїв теоретичні концепції та втілив їх на
+практиці.
+     Основні досягнення:
+     а)     Створено    масштабовану      структуру    коду:   Завдяки   модульній
+            архітектурі з використанням «header», «footer» та централізованого
+            маршрутизатора, застосунок став значно простішим для підтримки та
+            подальшого розширення новими функціями.
+     б)     Реалізовано повноцінний цикл життя користувача: Створено надійні
+            механізми реєстрації, входу та виходу з системи, що є основою для будь-
+            якого персоніфікованого веб-сервісу.
+     в)     Впроваджено надійну систему безпеки: Застосування сучасних
+            практик, таких як хешування паролів, захист від SQL-ін’єкцій та
+                                                                          7
+         XSS-атак, забезпечує високий рівень захисту даних користувачів та
+         стабільності роботи самого застосунку.
+     Робота продемонструвала важливість комплексного підходу до розробки, де
+функціональність нерозривно пов’язана з архітектурою, зручністю використання
+та, найголовніше, безпекою.
+                                                                            8
+                                ДОДАТОК А
+                                 Відеозапис
+
+    Відеозапис презентації результатів лабораторної роботи: https://youtu.be/6UxnzELnWSA
+    Хронологічний опис відеозапису:
+    00:00 – Вступ та тема лабораторної роботи
+    00:11 – Архітектура застосунку: роутер та контролери
+    01:13 – Реалізація авторизації та розмежування доступу
+    02:07 – Логіка роботи контролерів (на прикладі AuthController)
+    02:40 – Шаблонізація та використання компонентів (принцип DRY)
+    03:36 – Створення таблиці користувачів та хешування паролів
+    04:20 – Завантаження та зберігання файлів (зображення профілю)
+    04:37 – Валідація даних, що вводяться користувачем
+    05:11 – Демонстрація роботи застосунку
+    05:16 – Спроба доступу до захищеної сторінки без авторизації
+    05:32 – Реєстрація нового користувача
+    05:55 – Редагування профілю: зміна даних та завантаження зображення
+    06:24 – Вихід із системи
+                                                                                9
+                                  ДОДАТОК Б
+                                 Програмний код
+
+      Б.1 Файл index.php
+
+      GitHub    репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/index.php
+ 1   <?php
+ 2
+ 3   session_start();
+ 4
+ 5   require_once 'src/Database/DB.php';
+ 6   require_once 'src/Database/CartRepository.php';
+ 7   require_once 'src/Controllers/HomeController.php';
+ 8   require_once 'src/Controllers/ItemsController.php';
+ 9   require_once 'src/Controllers/CartController.php';
+10   require_once 'src/Controllers/AuthController.php';
+11   require_once 'src/Controllers/ProfileController.php';
+12
+13   $db = new DB("shop.db");
+14
+15   $request = $_GET['page'] ?? 'home';
+16   $action = $_GET['action'] ?? 'index';
+17
+18   $protected_pages = ['home', 'items', 'cart', 'profile'];
+19   $public_pages = ['login', 'register'];
+20
+21 if (in_array($request, $protected_pages) && !isset($_SESSION['user']))
+   {
+22     header('Location: ?page=404');
+23     exit();
+24 }
+25
+26 try {
+27     switch ($request) {
+28         case 'home':
+29             $controller = new HomeController($db);
+30             $controller->index();
+31             break;
+32
+33         case 'items':
+34             $controller = new ItemsController($db);
+35             $controller->index();
+36             break;
+37
+38         case 'cart':
+39             $controller = new CartController($db);
+40             if ($action === 'add' && $_SERVER['REQUEST_METHOD'] ===
+   'POST') {
+41                 $controller->add();
+42             } elseif ($action === 'remove' &&
+   $_SERVER['REQUEST_METHOD'] === 'POST') {
+                                                                          10
+
+43                   $controller->remove();
+44               } elseif ($action === 'clear' && $_SERVER['REQUEST_METHOD']
+     === 'POST') {
+45                   $controller->clear();
+46               } else {
+47                   $controller->index();
+48               }
+49               break;
+50
+51         case 'login':
+52             $controller = new AuthController($db);
+53             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+54                  $controller->login();
+55             } else {
+56                  $controller->showLogin();
+57             }
+58             break;
+59
+60         case 'register':
+61             $controller = new AuthController($db);
+62             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+63                  $controller->register();
+64             } else {
+65                  $controller->showRegister();
+66             }
+67             break;
+68
+69         case 'logout':
+70             $controller = new AuthController($db);
+71             $controller->logout();
+72             break;
+73
+74         case 'profile':
+75             $controller = new ProfileController($db);
+76             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+77                  $controller->updateProfile();
+78             } else {
+79                  $controller->showProfile();
+80             }
+81             break;
+82
+83         default:
+84             http_response_code(404);
+85             include 'templates/pages/404.php';
+86             break;
+87     }
+88 } catch (Exception $e) {
+89     error_log("Application error: " . $e->getMessage());
+90     http_response_code(500);
+91     include 'templates/pages/error.php';
+92 }
+                                                                                   11
+      Б.2 Файл style.css
+
+      GitHub     репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/public/css/style.css
+ 1   body {
+ 2       font-family: monospace;
+ 3       background-color: #f0f0f0;
+ 4       color: #333;
+ 5       margin: 0;
+ 6       padding: 0;
+ 7       display: flex;
+ 8       flex-direction: column;
+ 9       min-height: 100vh;
+10   }
+11
+12   header,
+13   footer {
+14       background-color: #333;
+15       color: #fff;
+16       padding: 10px 20px;
+17       text-align: center;
+18   }
+19
+20   nav a:not(:hover) {
+21       text-decoration: none;
+22   }
+23
+24   .container {
+25       flex: 1;
+26       padding: 20px;
+27       max-width: 800px;
+28       margin: 20px auto;
+29       background-color: #fff;
+30       border: 1px solid #ccc;
+31       box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+32   }
+33
+34   .product-list {
+35       display: grid;
+36       grid-template-columns: repeat(3, 1fr);
+37       gap: 10px;
+38   }
+39
+40   .product-list>* {
+41       border: 1px solid #eee;
+42       padding: 10px;
+43   }
+                                                                                    12
+      Б.3 Файл AuthController.php
+
+      GitHub         репозиторій:      https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Controllers/AuthController.php
+  1 <?php
+  2 class AuthController
+  3 {
+  4     private $db;
+  5
+  6     public function __construct(DB $db)
+  7     {
+  8         $this->db = $db;
+  9     }
+ 10
+ 11     public function showLogin(): void
+ 12     {
+ 13         if (isset($_SESSION['user'])) {
+ 14             header('Location: ?page=home');
+ 15             exit();
+ 16         }
+ 17
+ 18         $data = ['title' => 'Вхід в систему'];
+ 19         $this->render('login', $data);
+ 20     }
+ 21
+ 22     public function login(): void
+ 23     {
+ 24         $username = trim($_POST['username'] ?? '');
+ 25         $password = $_POST['password'] ?? '';
+ 26         $error = '';
+ 27
+ 28         if (empty($username) || empty($password)) {
+ 29             $error = 'Заповніть всі поля';
+ 30         } else {
+ 31             try {
+ 32                  $user = $this->db->authenticate_user($username,
+    $password);
+ 33                  if ($user) {
+ 34                      $_SESSION['user'] = $user;
+ 35                      header('Location: ?page=home');
+ 36                      exit();
+ 37                  } else {
+ 38                      $error = 'Невірні дані для входу';
+ 39                  }
+ 40             } catch (DbException $e) {
+ 41                  $error = 'Помилка системи';
+ 42                  error_log("Login error: " . $e->getMessage());
+ 43             }
+ 44         }
+ 45
+ 46         $data = ['title' => 'Вхід в систему', 'error' => $error];
+ 47         $this->render('login', $data);
+                                                                           13
+
+48        }
+49
+50        public function showRegister(): void
+51        {
+52            if (isset($_SESSION['user'])) {
+53                header('Location: ?page=home');
+54                exit();
+55            }
+56
+57              $data = ['title' => 'Реєстрація'];
+58              $this->render('register', $data);
+59        }
+60
+61        public function register(): void
+62        {
+63            $username = trim($_POST['username'] ?? '');
+64            $password = $_POST['password'] ?? '';
+65            $name = trim($_POST['name'] ?? '');
+66            $surname = trim($_POST['surname'] ?? '');
+67            $age = (int)($_POST['age'] ?? 0);
+68            $error = '';
+69
+70            if (empty($username) || empty($password) || empty($name)) {
+71                $error = 'Заповніть всі обов\'язкові поля';
+72            } elseif (strlen($password) < 6) {
+73                $error = 'Пароль повинен містити мінімум 6 символів';
+74            } else {
+75                try {
+76                     if ($this->db->register_user($username, $password,
+      $name, $surname, $age)) {
+77                         $user = $this->db->authenticate_user($username,
+      $password);
+ 78                        $_SESSION['user'] = $user;
+ 79                        header('Location: ?page=home');
+ 80                        exit();
+ 81                    } else {
+ 82                        $error = 'Користувач з таким іменем вже існує';
+ 83                    }
+ 84               } catch (DbException $e) {
+ 85                    $error = 'Помилка реєстрації';
+ 86                    error_log("Registration error: " . $e->getMessage());
+ 87               }
+ 88           }
+ 89
+ 90             $data = ['title' => 'Реєстрація', 'error' => $error];
+ 91             $this->render('register', $data);
+ 92       }
+ 93
+ 94       public function logout(): void
+ 95       {
+ 96           session_destroy();
+ 97           header('Location: ?page=login');
+ 98           exit();
+ 99       }
+100
+101       /**
+                                                                                    14
+
+102        * @param array<int,mixed> $data
+103        */
+104      private function render(string $template, array $data = []): void
+105      {
+106           extract($data);
+107           include 'templates/pages/' . $template . '.php';
+108      }
+109 }
+
+
+      Б.4 Файл CartController.php
+
+      GitHub         репозиторій:      https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Controllers/CartController.php
+ 1 <?php
+ 2 class CartController
+ 3 {
+ 4     private $cartRepo;
+ 5
+ 6     public function __construct(DB $db)
+ 7     {
+ 8         $this->cartRepo = new CartRepository($db);
+ 9     }
+10
+11     public function index(): void
+12     {
+13         $data = [
+14             'title' => 'Кошик',
+15             'cart_items' => $this->cartRepo->getItems(),
+16             'cart_total' => $this->cartRepo->getTotal(),
+17             'cart_count' => $this->cartRepo->getCount(),
+18             'user' => $_SESSION['user']
+19         ];
+20
+21         $this->render('cart', $data);
+22     }
+23
+24     public function add(): void
+25     {
+26         $product_id = filter_input(INPUT_POST, 'product_id',
+   FILTER_VALIDATE_INT);
+27         $quantity = filter_input(INPUT_POST, 'quantity',
+   FILTER_VALIDATE_INT);
+28
+29         if ($product_id !== false && $product_id !== null &&
+   $quantity !== false && $quantity !== null) {
+30             try {
+31                 $this->cartRepo->addItem($product_id, $quantity);
+32             } catch (DbException $e) {
+33                 error_log("Cart handling error: " . $e->getMessage());
+34             }
+35         }
+                                                                                    15
+
+36
+37           header('Location: ?page=items');
+38           exit();
+39       }
+40
+41       public function remove(): void
+42       {
+43           $product_id = filter_input(INPUT_POST, 'product_id',
+     FILTER_VALIDATE_INT);
+44
+45           if ($product_id !== false && $product_id !== null) {
+46               try {
+47                   $this->cartRepo->removeItem($product_id);
+48               } catch (DbException $e) {
+49                   error_log("Cart handling error: " . $e->getMessage());
+50               }
+51           }
+52
+53           header('Location: ?page=cart');
+54           exit();
+55       }
+56
+57       public function clear(): void
+58       {
+59           try {
+60               $this->cartRepo->clear();
+61           } catch (DbException $e) {
+62               error_log("Cart handling error: " . $e->getMessage());
+63           }
+64
+65           header('Location: ?page=cart');
+66           exit();
+67       }
+68
+69       /**
+70         * @param array<int,mixed> $data
+71         */
+72       private function render(string $template, array $data = []): void
+73       {
+74            extract($data);
+75            include 'templates/pages/' . $template . '.php';
+76       }
+77 }
+
+
+       Б.5 Файл HomeController.php
+
+       GitHub        репозиторій:      https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Controllers/HomeController.php
+ 1 <?php
+ 2 class HomeController
+ 3 {
+                                                                                16
+
+ 4       private $cartRepo;
+ 5
+ 6       public function __construct(DB $db)
+ 7       {
+ 8           $this->cartRepo = new CartRepository($db);
+ 9       }
+10
+11       public function index(): void
+12       {
+13           $data = [
+14               'title' => 'Головна сторінка',
+15               'cart_count' => $this->cartRepo->getCount(),
+16               'user' => $_SESSION['user']
+17           ];
+18
+19             $this->render('home', $data);
+20       }
+21
+22       /**
+23         * @param array<int,mixed> $data
+24         */
+25       private function render(string $template, array $data = []): void
+26       {
+27            extract($data);
+28            include 'templates/pages/' . $template . '.php';
+29       }
+30 }
+
+
+       Б.6 Файл ItemsController.php
+
+       GitHub     репозиторій:    https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Controllers/ItemsController.php
+ 1 <?php
+ 2 class ItemsController
+ 3 {
+ 4     private $db;
+ 5     private $cartRepo;
+ 6
+ 7     public function __construct(DB $db)
+ 8     {
+ 9         $this->db = $db;
+10         $this->cartRepo = new CartRepository($db);
+11     }
+12
+13     public function index(): void
+14     {
+15         $data = [
+16             'title' => 'Сторінка товарів',
+17             'items' => $this->db->get_items(),
+18             'cart_count' => $this->cartRepo->getCount(),
+19             'user' => $_SESSION['user']
+                                                                                  17
+
+20              ];
+21
+22              $this->render('items', $data);
+23       }
+24
+25       /**
+26         * @param array<int,mixed> $data
+27         */
+28       private function render(string $template, array $data = []): void
+29       {
+30            extract($data);
+31            include 'templates/pages/' . $template . '.php';
+32       }
+33 }
+
+
+       Б.7 Файл ProfileController.php
+
+       GitHub        репозиторій:   https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Controllers/ProfileController.php
+ 1 <?php
+ 2 class ProfileController
+ 3 {
+ 4     private $db;
+ 5
+ 6     public function __construct(DB $db)
+ 7     {
+ 8         $this->db = $db;
+ 9     }
+10
+11     public function showProfile(): void
+12     {
+13         $data = ['title' => 'Профіль'];
+14         $this->render('profile', $data);
+15     }
+16
+17     public function updateProfile(): void
+18     {
+19         $user = $_SESSION['user'];
+20         $id = $user['id'];
+21         $name = trim($_POST['name'] ?? $user['name']);
+22         $surname = trim($_POST['surname'] ?? $user['surname']);
+23         $age = (int)($_POST['age'] ?? $user['age']);
+24         $description = trim($_POST['description'] ??
+   $user['description']);
+25         $photo_path = $user['photo_path'];
+26         $error = '';
+27
+28         if (mb_strlen($name) < 2 && mb_strlen($surname) < 2) {
+29             $error = "Ім'я та прізвище повинні мати довжину більше 1
+   символа";
+30             $data = ['title' => 'Профіль', 'error' => $error];
+                                                                            18
+
+31               $this->render('profile', $data);
+32               return;
+33           }
+34
+35           if (mb_strlen($description) < 50) {
+36               $error = 'Біоаграфія не може бути менше 50 символів';
+37               $data = ['title' => 'Профіль', 'error' => $error];
+38               $this->render('profile', $data);
+39               return;
+40           }
+41
+42           if (isset($_FILES['photo']) && $_FILES['photo']['error'] ===
+     UPLOAD_ERR_OK) {
+43               if (!in_array($_FILES['photo']['type'], ['image/jpeg',
+     'image/png'])) {
+44                    $error = 'Неправильний формат файлу';
+45                    $data = ['title' => 'Профіль', 'error' => $error];
+46                    $this->render('profile', $data);
+47                    return;
+48               }
+49
+50               $uploads = 'uploads/';
+51               if (!is_dir($uploads)) {
+52                   mkdir($uploads, 0755, true);
+53               }
+54
+55               $new_path = $uploads . $id . '-' . time() . '.' .
+     pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+56
+57               if (!move_uploaded_file($_FILES['photo']['tmp_name'],
+     $new_path)) {
+58                   $error = 'Помилка під час переміщення файлу';
+59                   $data = ['title' => 'Профіль', 'error' => $error];
+60                   $this->render('profile', $data);
+61                   return;
+62               }
+63
+64               $photo_path = $new_path;
+65           }
+66
+67           try {
+68               $success = $this->db->update_user($id, $name, $surname,
+     $description, $photo_path, $age);
+69
+70               if ($success) {
+71                   $user = $this->db->get_user_by_id($id);
+72                   $_SESSION['user'] = $user;
+73               } else {
+74                   $error = 'Під час оновлення даних сталася помилка';
+75               }
+76
+77               header('Location: ?page=profile');
+78               exit();
+79           } catch (DbException $e) {
+80               $error = 'Помилка оновлення профілю';
+81               error_log("Profile update error: " . $e->getMessage());
+                                                                                 19
+
+82           }
+83
+84           $data = ['title' => 'Профіль', 'error' => $error];
+85           $this->render('profile', $data);
+86       }
+87
+88       /**
+89         * @param array<int,mixed> $data
+90         */
+91       private function render(string $template, array $data = []): void
+92       {
+93            extract($data);
+94            include 'templates/pages/' . $template . '.php';
+95       }
+96 }
+
+
+       Б.8 Файл CartRepository.php
+
+       GitHub        репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Database/CartRepository.php
+ 1 <?php
+ 2 class CartRepository
+ 3 {
+ 4     private $db;
+ 5
+ 6     public function __construct(DB $db)
+ 7     {
+ 8         $this->db = $db;
+ 9     }
+10
+11     public function getItems(): array
+12     {
+13         return $this->db->get_cart();
+14     }
+15
+16     public function getTotal(): float
+17     {
+18         return $this->db->get_cart_total();
+19     }
+20
+21     public function getCount(): int
+22     {
+23         return $this->db->get_cart_count();
+24     }
+25
+26     public function addItem(int $id, int $quantity): bool
+27     {
+28         return $this->db->add_to_cart($id, $quantity);
+29     }
+30
+31     public function removeItem(int $id): bool
+                                                                                  20
+
+32       {
+33             return $this->db->remove_from_cart($id);
+34       }
+35
+36       public function clear(): bool
+37       {
+38           return $this->db->empty_cart();
+39       }
+40
+41       public function getItemQuantity(int $id): int
+42       {
+43           return $this->db->get_cart_item_quantity($id);
+44       }
+45 }
+
+
+       Б.9 Файл DB.php
+
+       GitHub     репозиторій:   https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/src/Database/DB.php
+  1    <?php
+  2
+  3    class DbException extends Exception {}
+  4
+  5    class DB
+  6    {
+  7        private $pdo;
+  8
+  9     /**
+ 10       * Initializes database
+ 11       *
+ 12       * @param string $db_path
+ 13       * @throws DbException If there's a database error.
+ 14       */
+ 15     public function __construct($db_path)
+ 16     {
+ 17          try {
+ 18              $this->pdo = new PDO("sqlite:" . $db_path);
+ 19              $this->pdo->setAttribute(PDO::ATTR_ERRMODE,
+    PDO::ERRMODE_EXCEPTION);
+ 20          } catch (PDOException $e) {
+ 21              throw new DbException("Connection to DB failed.\nCaused
+    by: " . $e->getMessage());
+ 22          }
+ 23
+ 24          try {
+ 25              $this->pdo->exec("
+ 26                  CREATE TABLE IF NOT EXISTS users (
+ 27                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+ 28                      username TEXT UNIQUE NOT NULL,
+ 29                      password TEXT NOT NULL,
+ 30                      name TEXT NOT NULL,
+ 31                      surname TEXT NOT NULL,
+ 32                      description TEXT NULL,
+                                                                             21
+
+33                          photo_path TEXT NULL,
+34                          age INTEGER DEFAULT 0
+35                     );
+36               ");
+37
+38               if ($this->pdo->query("SELECT COUNT(*) FROM users;")-
+     >fetchColumn() == 0) {
+39                   $default_password = password_hash('admin123',
+     PASSWORD_DEFAULT);
+40                   $this->pdo->exec("
+41                       INSERT INTO users (username, password, name,
+     surname, description, age)
+42                       VALUES ('admin', '$default_password',
+     'Адміністратор', 'Адміністратор', 'Адміністратор', 25);
+43                   ");
+44               }
+45           } catch (PDOException $e) {
+46               throw new DbException("Error initialising users table.
+     \nCaused by: " . $e->getMessage());
+47           }
+48
+49           try {
+50                $this->pdo->exec("
+51                    CREATE TABLE IF NOT EXISTS items (
+52                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+53                        name TEXT NOT NULL,
+54                        price REAL NOT NULL
+55                    );
+56                ");
+57                if ($this->pdo->query("SELECT COUNT(id) FROM items;")-
+     >fetchColumn() == 0) {
+58                    $this->pdo->exec("
+59                        INSERT INTO items (name, price) VALUES ('Молоко
+     пастеризоване', 32.50);
+60                        INSERT INTO items (name, price) VALUES ('Хліб
+     чорний', 18.00);
+61                        INSERT INTO items (name, price) VALUES ('Сир
+     білий', 85.00);
+62                        INSERT INTO items (name, price) VALUES ('Сметана
+     20%', 45.80);
+63                        INSERT INTO items (name, price) VALUES ('Кефір
+     1%', 28.50);
+64                        INSERT INTO items (name, price) VALUES ('Вода
+     газована', 25.00);
+65                        INSERT INTO items (name, price) VALUES ('Печиво
+     \"Весна\"', 42.30);
+66                        INSERT INTO items (name, price) VALUES ('Масло
+     вершкове', 125.00);
+67                        INSERT INTO items (name, price) VALUES ('Йогурт
+     натуральний', 38.90);
+68                        INSERT INTO items (name, price) VALUES ('Сік
+     апельсиновий', 55.00);
+69                    ");
+70                }
+71           } catch (PDOException $e) {
+                                                                           22
+
+ 72              throw new DbException("Error initialising items table.
+    \nCaused by: " . $e->getMessage());
+ 73          }
+ 74
+ 75          try {
+ 76              $this->pdo->exec("
+ 77                  CREATE TABLE IF NOT EXISTS cart (
+ 78                      id INTEGER NOT NULL UNIQUE,
+ 79                      count INTEGER NOT NULL,
+ 80                      FOREIGN KEY(id) REFERENCES items(id) ON DELETE
+    CASCADE
+ 81                  );
+ 82              ");
+ 83          } catch (PDOException $e) {
+ 84              throw new DbException("Error initialising cart table.
+    \nCaused by: " . $e->getMessage());
+ 85          }
+ 86     }
+ 87
+ 88     /**
+ 89       * Updates user by id
+ 90       * @param int $id
+ 91       * @param string $name
+ 92       * @param string $surname
+ 93       * @param string $description
+ 94       * @param int $age
+ 95       * @param string $photo_path
+ 96       */
+ 97     public function update_user($id, $name, $surname, $description,
+    $photo_path, $age): bool
+ 98     {
+ 99          try {
+100              $stmt = $this->pdo->prepare("
+101                  UPDATE users
+102                  SET name = :name, surname = :surname, description
+    = :description, age = :age, photo_path = :photo_path
+103                  WHERE id = :id
+104              ");
+105              $stmt->bindParam(':name', $name, PDO::PARAM_STR);
+106              $stmt->bindParam(':surname', $surname, PDO::PARAM_STR);
+107              $stmt->bindParam(':description', $description,
+    PDO::PARAM_STR);
+108              $stmt->bindParam(':photo_path', $photo_path,
+    PDO::PARAM_STR);
+109              $stmt->bindParam(':age', $age, PDO::PARAM_INT);
+110              $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+111              return $stmt->execute();
+112          } catch (PDOException $e) {
+113              throw new DbException("Error updating user.\nCaused by:
+    " . $e->getMessage());
+114          }
+115     }
+116
+117     /**
+118       * Authenticate user by username and password
+119       * @param mixed $username
+                                                                         23
+
+120       * @param mixed $password
+121       */
+122     public function authenticate_user($username, $password): ?array
+123     {
+124          try {
+125              $stmt = $this->pdo->prepare("SELECT id, username, name,
+    surname, description, photo_path, age FROM users WHERE username
+    = :username");
+126              $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+127              $stmt->execute();
+128              $user = $stmt->fetch(PDO::FETCH_ASSOC);
+129
+130              if ($user) {
+131                  $stmt = $this->pdo->prepare("SELECT password FROM
+    users WHERE username = :username");
+132                  $stmt->bindParam(':username', $username,
+    PDO::PARAM_STR);
+133                  $stmt->execute();
+134                  $stored_password = $stmt->fetchColumn();
+135
+136                  if (password_verify($password, $stored_password)) {
+137                      return $user;
+138                  }
+139              }
+140              return null;
+141          } catch (PDOException $e) {
+142              throw new DbException("Error authenticating user.\nCaused
+    by: " . $e->getMessage());
+143          }
+144     }
+145
+146     /**
+147       * Register new user
+148       * @param mixed $username
+149       * @param mixed $password
+150       * @param mixed $name
+151       * @param mixed $surname
+152       * @param mixed $age
+153       */
+154     public function register_user($username, $password, $name,
+    $surname, $age): bool
+155     {
+156          try {
+157              $hashed_password = password_hash($password,
+    PASSWORD_DEFAULT);
+158              $stmt = $this->pdo->prepare("INSERT INTO users (username,
+    password, name, surname, age) VALUES
+    (:username, :password, :name, :surname, :age)");
+159              $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+160              $stmt->bindParam(':password', $hashed_password,
+    PDO::PARAM_STR);
+161              $stmt->bindParam(':name', $name, PDO::PARAM_STR);
+162              $stmt->bindParam(':surname', $surname, PDO::PARAM_STR);
+163              $stmt->bindParam(':age', $age, PDO::PARAM_INT);
+164              return $stmt->execute();
+165          } catch (PDOException $e) {
+                                                                         24
+
+166              throw new DbException("Error registering user.\nCaused by:
+    " . $e->getMessage());
+167          }
+168     }
+169
+170     /**
+171       * Get user by ID
+172       * @param mixed $id
+173       */
+174     public function get_user_by_id($id): ?array
+175     {
+176          try {
+177              $stmt = $this->pdo->prepare("SELECT id, username, name,
+    surname, description, age, photo_path FROM users WHERE id = :id");
+178              $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+179              $stmt->execute();
+180              $result = $stmt->fetch(PDO::FETCH_ASSOC);
+181              return $result ?: null;
+182          } catch (PDOException $e) {
+183              throw new DbException("Error retrieving user by ID.
+    \nCaused by: " . $e->getMessage());
+184          }
+185     }
+186
+187     /**
+188       * Fetches all items from the database.
+189       *
+190       * @return array[]
+191       * @throws DbException If there's a database error.
+192       */
+193     public function get_items(): array
+194     {
+195          try {
+196              $stmt = $this->pdo->query("SELECT id, name, price FROM
+    items ORDER BY id;");
+197              return $stmt->fetchAll(PDO::FETCH_ASSOC);
+198          } catch (PDOException $e) {
+199              throw new DbException("Error retrieving data from the
+    items table.\nCaused by: " . $e->getMessage());
+200          }
+201     }
+202
+203     /**
+204       * Fetches a specific item by ID
+205       *
+206       * @param int $id
+207       * @return array|null
+208       * @throws DbException If there's a database error.
+209       */
+210     public function get_item_by_id($id): ?array
+211     {
+212          try {
+213              $stmt = $this->pdo->prepare("SELECT id, name, price FROM
+    items WHERE id = :id;");
+214              $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+215              $stmt->execute();
+                                                                         25
+
+216              $result = $stmt->fetch(PDO::FETCH_ASSOC);
+217              return $result ?: null;
+218          } catch (PDOException $e) {
+219              throw new DbException("Error retrieving item by ID.
+    \nCaused by: " . $e->getMessage());
+220          }
+221     }
+222
+223     /**
+224       * Fetches all items in the cart from the database without price
+    info.
+225       *
+226       * @return array[]
+227       * @throws DbException If there's a database error.
+228       */
+229     public function get_cart_no_price(): array
+230     {
+231          try {
+232              $stmt = $this->pdo->query(
+233                  "SELECT items.name, cart.count
+234                  FROM cart
+235                  INNER JOIN items ON cart.id = items.id
+236                  ORDER BY cart.id;"
+237              );
+238              return $stmt->fetchAll(PDO::FETCH_ASSOC);
+239          } catch (PDOException $e) {
+240              throw new DbException("Error retrieving cart items without
+    price.\nCaused by: " . $e->getMessage());
+241          }
+242     }
+243
+244     /**
+245       * Fetches all items in the cart from the database.
+246       *
+247       * @return array[]
+248       * @throws DbException If there's a database error.
+249       */
+250     public function get_cart(): array
+251     {
+252          try {
+253              $stmt = $this->pdo->query(
+254                  "SELECT
+255                      cart.id,
+256                      items.name,
+257                      items.price,
+258                      cart.count,
+259                      ROUND(items.price * cart.count, 2) as total_price
+260                  FROM cart
+261                  INNER JOIN items ON cart.id = items.id
+262                  ORDER BY cart.id;"
+263              );
+264              return $stmt->fetchAll(PDO::FETCH_ASSOC);
+265          } catch (PDOException $e) {
+266              throw new DbException("Error retrieving cart items.
+    \nCaused by: " . $e->getMessage());
+267          }
+                                                                           26
+
+268       }
+269
+270       /**
+271         * Get total items count in cart
+272         *
+273         * @return int
+274         * @throws DbException If there's a database error.
+275         */
+276       public function get_cart_count(): int
+277       {
+278            try {
+279                $stmt = $this->pdo->query("SELECT COALESCE(SUM(count), 0)
+      FROM cart;");
+280                return (int)$stmt->fetchColumn();
+281            } catch (PDOException $e) {
+282                throw new DbException("Error getting cart count.\nCaused
+      by: " . $e->getMessage());
+283            }
+284       }
+285
+286     /**
+287       * Get total price of all items in cart
+288       *
+289       * @return float
+290       * @throws DbException If there's a database error.
+291       */
+292     public function get_cart_total(): float
+293     {
+294          try {
+295              $stmt = $this->pdo->query(
+296                  "SELECT COALESCE(SUM(items.price * cart.count), 0.0)
+297                  FROM cart
+298                  INNER JOIN items ON cart.id = items.id;"
+299              );
+300              return (float)$stmt->fetchColumn();
+301          } catch (PDOException $e) {
+302              throw new DbException("Error calculating cart total.
+    \nCaused by: " . $e->getMessage());
+303          }
+304     }
+305
+306     /**
+307       * Add item to the cart or update its quantity.
+308       *
+309       * @param int $id
+310       * @param int $count
+311       *
+312       * @return bool
+313       * @throws DbException If there's a database error or item doesn't
+    exist.
+314       */
+315     public function add_to_cart($id, $count): bool
+316     {
+317          try {
+318              // Check if the item exists
+319              $item = $this->get_item_by_id($id);
+                                                                            27
+
+320               if (!$item) {
+321                   throw new DbException("Item with ID $id does not
+      exist.");
+322               }
+323
+324               // If count is 0 or less, remove the item from the cart
+325               if ($count <= 0) {
+326                   return $this->remove_from_cart($id);
+327               }
+328
+329              // Insert or update the cart item
+330              $stmt = $this->pdo->prepare(
+331                  "INSERT INTO cart (id, count)
+332                  VALUES (:id, :count)
+333                  ON CONFLICT(id) DO UPDATE SET
+334                      count = excluded.count;"
+335              );
+336              return $stmt->execute(['id' => $id, 'count' => $count]);
+337          } catch (PDOException $e) {
+338              throw new DbException("Error adding/updating item in the
+    cart.\nCaused by: " . $e->getMessage());
+339          }
+340     }
+341
+342     /**
+343       * Empty the cart
+344       *
+345       * @return bool
+346       * @throws DbException If there's a database error.
+347       */
+348     public function empty_cart(): bool
+349     {
+350          try {
+351              $stmt = $this->pdo->prepare("DELETE FROM cart");
+352              return $stmt->execute();
+353          } catch (PDOException $e) {
+354              throw new DbException("Error removing item from the cart.
+    \nCaused by: " . $e->getMessage());
+355          }
+356     }
+357
+358     /**
+359       * Remove an item from the cart
+360       *
+361       * @param int $id
+362       *
+363       * @return bool
+364       * @throws DbException If there's a database error.
+365       */
+366     public function remove_from_cart($id): bool
+367     {
+368          try {
+369              $stmt = $this->pdo->prepare("DELETE FROM cart WHERE id
+    = :id");
+370              return $stmt->execute(['id' => $id]);
+371          } catch (PDOException $e) {
+                                                                               28
+
+372              throw new DbException("Error removing item from the cart.
+    \nCaused by: " . $e->getMessage());
+373          }
+374     }
+375
+376     /**
+377       * Get item quantity in cart
+378       *
+379       * @param int $id
+380       * @return int The quantity of the item in the cart, or 0 if not
+    found.
+381       * @throws DbException If there's a database error.
+382       */
+383     public function get_cart_item_quantity(int $id): int
+384     {
+385          try {
+386              $stmt = $this->pdo->prepare("SELECT count FROM cart WHERE
+    id = :id");
+387              $stmt->execute(['id' => $id]);
+388              $result = $stmt->fetchColumn();
+389              return $result !== false ? (int)$result : 0;
+390          } catch (PDOException $e) {
+391              throw new DbException("Error getting cart item quantity.
+    \nCaused by: " . $e->getMessage());
+392          }
+393     }
+394 }
+
+
+      Б.10 Файл error.php
+
+      GitHub    репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/components/
+error.php
+1   <?php if (isset($error) && !empty($error)): ?>
+2       <div style="color: red; margin-bottom: 20px; padding: 10px; border:
+    1px solid red; background: #ffebee;">
+3           <?php echo htmlspecialchars($error); ?>
+4       </div>
+5   <?php endif; ?>
+
+
+      Б.11 Файл footer.php
+
+      GitHub    репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/components/
+footer.php
+1   <footer>
+2       <?php $cart_count = $cart_count ?? 0;
+3       include 'navigation.php'; ?>
+                                                                                   29
+
+4       <p>&copy; <?php echo date("Y"); ?> ТОВ "Весна". Усі права
+    захищені.</p>
+5   </footer>
+
+
+      Б.12 Файл header.php
+
+      GitHub     репозиторій:    https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/components/
+header.php
+1   <header>
+2       <h1>Продовольчий магазин "Весна"</h1>
+3       <?php if (isset($_SESSION['user'])): ?>
+4           <h3>Добрий день <?php echo htmlspecialchars($_SESSION['user']
+    ['name']); ?></h3>
+5       <?php endif; ?>
+6       <?php include 'navigation.php'; ?>
+7   </header>
+
+
+      Б.13 Файл navigation.php
+
+      GitHub     репозиторій:    https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/components/navigation.php
+ 1 <nav>
+ 2     <?php if (isset($_SESSION['user'])): ?>
+ 3         <a href="?page=home">Головна</a>
+ 4         |
+ 5         <a href="?page=items">Товари</a>
+ 6         |
+ 7         <a href="?page=cart">Кошик (<?php echo $cart_count ?? 0; ?>)</
+   a>
+ 8         |
+ 9         <a href="?page=profile">Профіль</a>
+10         |
+11         <a href="?page=logout">Вихід</a>
+12     <?php else: ?>
+13         <a href="?page=login">Вхід</a>
+14         |
+15         <a href="?page=register">Реєстрація</a>
+16     <?php endif; ?>
+17 </nav>
+
+
+      Б.14 Файл layout.php
+
+      GitHub     репозиторій:    https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/layout.php
+                                                                                    30
+
+ 1 <!DOCTYPE html>
+ 2 <html lang="uk">
+ 3
+ 4 <head>
+ 5     <meta charset="UTF-8">
+ 6     <title><?php echo htmlspecialchars($title ?? 'Продовольчий магазин
+   "Весна"'); ?></title>
+ 7     <link rel="stylesheet" href="public/css/style.css">
+ 8 </head>
+ 9
+10 <body>
+11     <?php include 'components/header.php'; ?>
+12
+13     <div class="container">
+14         <?php echo $content; ?>
+15     </div>
+16
+17     <?php include 'components/footer.php'; ?>
+18 </body>
+19
+20 </html>
+
+
+      Б.15 Файл 404.php
+
+      GitHub     репозиторій:    https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/404.php
+1   <?php ob_start(); ?>
+2   <div style="display: flex; flex-direction: column; align-items: center;
+    justify-content: space-between;">
+3       <h1 style="text-align: center;">Будь-ласка увійдіть в акаунт для
+    доступу до цієї сторінки</h1>
+4       <img src="public/assets/logo.png" alt="logo" style="width: 90%;">
+5   </div>
+6   <?php
+7   $content = ob_get_clean();
+8   include 'templates/layout.php';
+9   ?>
+
+
+      Б.16 Файл cart.php
+
+      GitHub     репозиторій:    https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/cart.php
+ 1 <?php ob_start(); ?>
+ 2 <?php if (empty($cart_items)): ?>
+ 3     <div style="display: flex; align-items: center; justify-content:
+   space-evenly;">
+                                                                          31
+
+ 4           <h3>Ваш кошик порожній <a href="?page=items">Перейти до
+     покупок</a></h3>
+ 5       </div>
+ 6   <?php else: ?>
+ 7       <div style="display: flex; align-items: center; justify-content:
+     space-evenly;">
+ 8           <h3>Ваш кошик</h3>
+ 9           <h3 class="cart-summary">
+10               Загальна сума: <?php echo number_format($cart_total, 2); ?>
+     грн
+11           </h3>
+12
+13           <button type="submit">Сплатити</button>
+14
+15         <form action="?page=cart&action=clear" method="POST"
+   style="display: inline;">
+16             <button type="submit">Очистити</button>
+17         </form>
+18     </div>
+19
+20     <div class="product-list">
+21         <?php foreach ($cart_items as $item): ?>
+22             <div>
+23                 <h2>
+24                      <?php echo htmlspecialchars($item['name']); ?>
+25                      <br>
+26                      <?php echo htmlspecialchars($item['count']); ?> шт.
+27                 </h2>
+28
+29                 <span>Ціна за одиницю: <?php echo
+   number_format($item['price'], 2); ?> грн</span>
+30                 <br>
+31                 <span>Загальна ціна: <?php echo
+   number_format($item['total_price'], 2); ?> грн</span>
+32
+33                 <br><br>
+34
+35                 <form action="?page=cart&action=remove" method="POST">
+36                      <input type="hidden" name="product_id" value="<?php
+   echo htmlspecialchars($item['id']); ?>">
+37                      <button type="submit" style="width:
+   100%;">Видалити</button>
+38                 </form>
+39             </div>
+40         <?php endforeach; ?>
+41     </div>
+42 <?php endif; ?>
+43 <?php
+44 $content = ob_get_clean();
+45 include 'templates/layout.php';
+46 ?>
+                                                                                 32
+      Б.17 Файл home.php
+
+      GitHub    репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/home.php
+1   <?php ob_start(); ?>
+2   <div style="display: flex; flex-direction: column; align-items:
+    center;">
+3       <img src="public/assets/logo.png" alt="logo" style="width: 90%;">
+4   </div>
+5   <?php
+6   $content = ob_get_clean();
+7   include 'templates/layout.php';
+8   ?>
+
+
+      Б.18 Файл items.php
+
+      GitHub    репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/items.php
+ 1 <?php ob_start(); ?>
+ 2 <h2>Доступні товари</h2>
+ 3 <div class="product-list">
+ 4     <?php foreach ($items as $item): ?>
+ 5          <div>
+ 6              <h2><?php echo htmlspecialchars($item['name']); ?></h2>
+ 7              <h3>Ціна: <?php echo number_format($item['price'], 2); ?>
+   грн</h3>
+ 8
+ 9              <form action="?page=cart&action=add" method="POST">
+10                  <input type="hidden" name="product_id" value="<?php
+   echo htmlspecialchars($item['id']); ?>">
+11                  <label for="quantity_<?php echo
+   htmlspecialchars($item['id']); ?>">Кількість:</label>
+12                  <input type="number" id="quantity_<?php echo
+   htmlspecialchars($item['id']); ?>" name="quantity" value="0" min="0"
+   max="100">
+13                  <button type="submit">Купити</button>
+14              </form>
+15          </div>
+16     <?php endforeach; ?>
+17 </div>
+18 <?php
+19 $content = ob_get_clean();
+20 include 'templates/layout.php';
+21 ?>
+                                                                                 33
+      Б.19 Файл login.php
+
+      GitHub     репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/login.php
+ 1 <?php ob_start(); ?>
+ 2 <div style="max-width: 400px; margin: 0 auto;">
+ 3     <h2>Вхід в систему</h2>
+ 4
+ 5     <?php require 'templates/components/error.php' ?>
+ 6
+ 7     <form method="POST" action="?page=login">
+ 8          <div style="margin-bottom: 15px;">
+ 9              <label for="username">Ім'я користувача:</label><br>
+10              <input type="text" id="username" name="username" required>
+11          </div>
+12
+13          <div style="margin-bottom: 15px;">
+14              <label for="password">Пароль:</label><br>
+15              <input type="password" id="password" name="password"
+   required>
+16          </div>
+17
+18          <button type="submit" style="width: 100%;">Увійти</button>
+19     </form>
+20
+21     <p style="text-align: center; margin-top: 20px;">
+22          <a href="?page=register">Немає акаунта? Зареєструватися</a>
+23     </p>
+24 </div>
+25 <?php
+26 $content = ob_get_clean();
+27 include 'templates/layout.php';
+28 ?>
+
+
+      Б.20 Файл profile.php
+
+      GitHub     репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/profile.php
+ 1 <?php ob_start(); ?>
+ 2
+ 3 <?php require 'templates/components/error.php' ?>
+ 4
+ 5 <div style="display: flex; flex-direction: column; align-items: center;
+   justify-content: space-between;">
+ 6     <div style="width: 150px; height: 150px; border: 1px solid black;
+   display: flex; justify-content: center; align-items: center; margin-
+   bottom: 20px;">
+                                                                                 34
+
+ 7         <img src="<?= htmlspecialchars($_SESSION['user']
+   ['photo_path']) ?>" alt="Profile Image" style="max-width: 100%; max-
+   height: 100%; object-fit: contain;">
+ 8     </div>
+ 9
+10     <form style="display: grid; gap: 15px;" method="post"
+   enctype="multipart/form-data">
+11         <input type="file" name="photo" accept="image/*">
+12
+13         <label style="font-weight: bold;">Ім'я</label>
+14         <input type="text" value="<?php echo $_SESSION['user']
+   ['name'] ?>" name="name">
+15
+16         <label style="font-weight: bold;">Фамілія</label>
+17         <input type="text" value="<?php echo $_SESSION['user']
+   ['surname'] ?>" name="surname">
+18
+19         <label style="font-weight: bold;">Вік</label>
+20         <input type="number" min="16" max="150" value="<?php echo
+   $_SESSION['user']['age'] ?>" name="age">
+21
+22         <label style="font-weight: bold;">Про себе</label>
+23         <textarea style="height: 50px; resize: vertical;"
+   name="description"><?php echo $_SESSION['user']['description'] ?></
+   textarea>
+24
+25         <button>Сохранить</button>
+26     </form>
+27 </div>
+28
+29 <?php
+30 $content = ob_get_clean();
+31 include 'templates/layout.php';
+32 ?>
+
+
+      Б.21 Файл register.php
+
+      GitHub      репозиторій:     https://github.com/NureSytnykYehor/smp-pzpi-23-2-sytnyk-yehor/tree/main/Lab4/smp-pzpi-23-2-sytnyk-yehor-lab4/templates/pages/register.php
+ 1 <?php ob_start(); ?>
+ 2 <div style="max-width: 400px; margin: 0 auto;">
+ 3     <h2>Реєстрація</h2>
+ 4
+ 5     <?php require 'templates/components/error.php' ?>
+ 6
+ 7     <form method="POST" action="?page=register">
+ 8         <div style="margin-bottom: 15px;">
+ 9             <label for="username">Логін *:</label><br>
+10             <input type="text" id="username" name="username" required>
+11         </div>
+12
+                                                                           35
+
+13          <div style="margin-bottom: 15px;">
+14              <label for="password">Пароль * (мінімум 6 символів):</
+   label><br>
+15              <input type="password" name="password" required>
+16          </div>
+17
+18          <div style="margin-bottom: 15px;">
+19              <label for="name">Ім'я *:</label><br>
+20              <input type="text" name="name" required>
+21          </div>
+22
+23          <div style="margin-bottom: 15px;">
+24              <label for="surname">Прізвище *:</label><br>
+25              <input type="text" name="surname" required>
+26          </div>
+27
+28          <div style="margin-bottom: 15px;">
+29              <label for="age">Вік *:</label><br>
+30              <input type="number" name="age" min="16" max="150"
+   style="width: 97%;" required>
+31          </div>
+32
+33          <button type="submit" style="width: 100%;">Зареєструватися</
+   button>
+34     </form>
+35
+36     <p style="text-align: center; margin-top: 20px;">
+37          <a href="?page=login">Вже є акаунт? Увійти</a>
+38     </p>
+39 </div>
+40 <?php
+41 $content = ob_get_clean();
+42 include 'templates/layout.php';
+43 ?>
+
