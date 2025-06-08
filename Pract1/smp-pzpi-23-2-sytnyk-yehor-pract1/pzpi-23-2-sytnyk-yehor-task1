@@ -1,0 +1,43 @@
+#!/bin/bash
+
+if (( $# != 2 )); then echo "Not enough/Too many arguments" >&2; exit 1; fi
+if (( $1 < 8 )); then echo "Height must be > 7" >&2; exit 2; fi
+if (( $2 < 7 )); then echo "Width must be > 6" >&2; exit 3; fi
+
+h=$(( ($1 % 2 != 0) ? $1 - 1 : $1 ))
+w=$(( ($2 % 2 == 0) ? $2 - 1 : $2 ))
+lh=$(( $h/2 - 1 ))
+
+if (( ($w-(2*$lh-1) != 2) )); then echo "Can't draw the tree with provided arguments" >&2; exit 4; fi
+
+
+ch='*'
+
+draw_layer() {
+	for ((i=$1; i <= lh; i++)); do
+		printf "%*s" "$(( (w - (2*i-1)) / 2 ))"
+		printf "%*s\n" "$(( 2*i-1 ))" | tr ' ' "$ch"
+
+		ch=$( [ "$ch" = '*' ] && echo '#' || echo '*' )
+	done
+}
+
+draw_stem() {
+	for i in {0..1}; do
+		printf "%$(( (h - 3) / 2 ))s"
+		printf "%3s\n" | tr ' ' "#"
+	done
+}
+
+draw_snow() {
+	printf "%${w}s\n" | tr ' ' "*"
+}
+
+draw_layer 1
+draw_layer 2
+draw_stem
+draw_snow
+
+i=0
+while [[ $i -ne 1 ]]; do i=$((i+1)); done
+until [[ $i -eq 2 ]]; do i=$((i+1)); done

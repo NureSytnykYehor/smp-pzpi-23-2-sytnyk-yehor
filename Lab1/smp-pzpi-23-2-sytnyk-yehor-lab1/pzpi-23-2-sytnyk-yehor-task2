@@ -1,0 +1,88 @@
+#!/bin/bash
+
+error() {
+    echo "Error: $1." >&2;
+    exit $2;
+}
+
+select_from(){
+    if [ -n "$2" -a $(echo "$1" | wc -l) -eq 1 ]; then echo "$1"; return 0; fi
+
+    select selected in quit $1; do
+        case "$selected" in
+            '') continue ;;
+            'quit') return 1 ;;
+            *) echo "$selected"; return 0 ;;
+        esac
+    done
+}
+
+if [ "$1" = "--version" ]; then echo 'cist converter 1.0'; exit 0; fi
+if [ "$1" = "--help" ]; then
+    echo "Usage: $0 [--help | --version] | [-q|--quiet] [[академ_група] файл_із_cist.csv]"
+    echo 'Convert schedule.csv from CIST format into Google Calendar format'
+    echo -e "  --help \t\tPrint this help message and exit"
+    echo -e "  --version \t\tPrint version info and exit"
+    echo -e "  -q, --quiet \t\tDo not print the result to stdout"
+    echo -e "  академ_група \t\tOptional group name"
+    echo -e "  файл_із_cist.csv \tCSV file to process"
+    exit 0;
+fi
+
+exec 3>&1;
+if [ "$1" = "-q" -o "$1" = "--quiet" ]; then exec 3>/dev/null; shift; fi
+
+if [ $# -eq 2 ]; then group="$1"; shift; fi
+if [ $# -eq 1 ]; then csv="$1"; fi
+
+csvs=$(ls TimeTable_??_??_20??.csv 2>/dev/null | sort)
+
+if [ -z "$csv" ]; then csv=$(select_from "$csvs") || exit 0; fi
+
+if [ ! -f "$csv" ]; then error "file '$csv' is not exist" 1; fi
+if [ ! -r "$csv" ]; then error "permission to read file '$csv' denied" 2; fi
+
+csv_data=$( cat "$csv" | sed 's/\r/\n/g' | iconv -f cp1251 -t utf8 )
+
+groups=$(
+    echo "$csv_data" \
+    | awk -v FPAT='[^,]*|"[^"]*"' '
+        NR > 1 {
+            gsub(/^"/, "", $1);
+            if (split($1, res, " - ") != 1) print res[1]
+        }
+    ' \
+    | sort \
+    | uniq
+)
+
+if [ -z "$group" ]; then group=$(select_from "$groups" "skip") || exit 0; fi
+
+if ! echo "$groups" | grep "$group"; then
+    echo "No '$group' group in '$csv'."
+    group=$(select_from "$groups" "skip") || exit 0;
+fi
+
+echo "$csv_data" \
+| awk -v FPAT='[^,]*|"[^"]*"' -v pattern="$([ -n "$group" ] && echo "^\"$group - ")" '
+    function time_fmt(time) {
+        gsub(/:|"/, " ", time)
+        return strftime("%I:%M %p", mktime("1970 01 01" time))
+    }
+
+    function date_fmt(date) {
+        gsub(/"/, "", date)
+        split(date, dp, ".")
+        return strftime("%m/%d/%Y", mktime(dp[3] " " dp[2] " " dp[1] " 00 00 00"))
+    }
+
+    NR==1 { print "Subject,Start Date,Start Time,End Date,End Time,Description" }
+
+    NR!=1 && $1 ~ pattern {
+        gsub(pattern "|^\"|\"$", "", $1)
+
+        printf("\"%s; №%d\",%s,%s,%s,%s,%s\n",
+            $1, ++lessons[$2], date_fmt($2), time_fmt($3), date_fmt($4), time_fmt($5), $12)
+    }
+' \
+| tee "Google_$(basename "$csv")" >&3
